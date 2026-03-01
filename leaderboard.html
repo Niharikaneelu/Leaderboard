@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HACKATHON · live leaderboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 20% 30%, #140b1f, #03010a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* floating orbs */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: 
+        radial-gradient(600px circle at 80% 20%, rgba(255, 100, 220, 0.2), transparent 60%),
+        radial-gradient(500px circle at 20% 70%, rgba(120, 80, 255, 0.25), transparent 70%),
+        radial-gradient(800px circle at 40% 90%, rgba(255, 200, 100, 0.15), transparent 80%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .glass-panel {
+      max-width: 1300px;
+      width: 100%;
+      background: rgba(15, 8, 26, 0.55);
+      backdrop-filter: blur(16px) saturate(200%);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(200, 160, 255, 0.25);
+      border-radius: 3.5rem;
+      padding: 2.5rem 2.2rem;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(180, 130, 255, 0.2) inset;
+      position: relative;
+      z-index: 10;
+    }
+
+    h1 {
+      font-size: clamp(2.6rem, 9vw, 4.8rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffdb70, #f0b0ff, #b5a6ff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      display: inline-block;
+      filter: drop-shadow(0 8px 12px rgba(160, 0, 255, 0.5));
+      line-height: 1.1;
+      margin-bottom: 0.25rem;
+    }
+    .logo {
+      max-width: 200px;
+      display: block;
+      margin: 0 auto 1rem;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .timer-container {
+      background: rgba(42, 31, 74, 0.8);
+      border-radius: 60px;
+      padding: 0.8rem 1.8rem;
+      border: 2px solid #ffb86b;
+      box-shadow: 0 0 30px rgba(255, 184, 107, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .timer-icon {
+      font-size: 1.8rem;
+      filter: drop-shadow(0 0 8px #ffb86b);
+    }
+
+    .timer-display {
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff2b5, #ffb86b);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: 3px;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    .timer-display:hover {
+      transform: scale(1.05);
+    }
+
+    .timer-label {
+      font-size: 0.9rem;
+      color: #b19cff;
+      text-transform: uppercase;
+    }
+
+    .timer-controls {
+      display: none;
+      gap: 0.5rem;
+      margin-left: 0.5rem;
+    }
+
+    .timer-btn {
+      background: transparent;
+      border: 1px solid #7b46c0;
+      color: #d0b0ff;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 1.2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .timer-btn:hover {
+      background: #4d2a86;
+      border-color: #ffb86b;
+      color: white;
+      box-shadow: 0 0 15px rgba(255, 184, 107, 0.5);
+    }
+
+    .timer-btn::after {
+      content: 'Admin';
+      position: absolute;
+      bottom: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      white-space: nowrap;
+      opacity: 0;
+      transition: 0.2s;
+    }
+
+    .timer-btn:hover::after {
+      bottom: -20px;
+      opacity: 1;
+    }
+
+    .subtitle {
+      font-size: 1.3rem; /* increased overall size */
+      font-weight: 500;
+      color: #b9b1e6;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 2.4rem;
+    }
+    .subtitle span {
+      background: #2f1d54;
+      padding: 0.25rem 1.2rem; /* slightly larger padding */
+      border-radius: 40px;
+      font-size: 1.05rem; /* larger text */
+      font-weight: 600;
+      color: #d0b0ff;
+      border: 1px solid #6a40b0;
+    }
+
+    /* ========== STATS SECTION – CENTERED & BIG ========== */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 2.5rem;
+      margin: 2rem 0 3rem 0;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      background: rgba(40, 15, 65, 0.8);
+      border: 2px solid #f5b56c;
+      border-radius: 3rem;
+      padding: 2rem 3rem;
+      backdrop-filter: blur(10px);
+      text-align: center;
+      box-shadow: 0 30px 45px -15px #000, 0 0 30px #ffb86b80;
+      transition: 0.25s;
+      min-width: 220px;
+    }
+    .stat-item:hover {
+      transform: scale(1.05);
+      border-color: #ffdb70;
+      background: rgba(75, 35, 120, 0.9);
+      box-shadow: 0 35px 55px -18px #ffd966;
+    }
+    .stat-item h3 {
+      font-size: 1.6rem;
+      text-transform: uppercase;
+      color: #ffe791;
+      letter-spacing: 2px;
+      margin-bottom: 0.8rem;
+      font-weight: 600;
+    }
+    .stat-value {
+      font-size: 4.5rem;
+      font-weight: 900;
+      background: linear-gradient(145deg, #fff2b5, #ffcba4);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      line-height: 1.2;
+      filter: drop-shadow(0 0 15px gold);
+    }
+
+    /* PODIUM — ultra glossy */
+    .podium-section {
+      margin: 3rem 0 3rem 0;
+    }
+    .podium-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 1.2rem;
+    }
+    .podium-card {
+      flex: 0 1 auto;
+      min-width: 150px;
+      padding: 1.8rem 1rem 1.4rem;
+      border-radius: 3rem 3rem 1.5rem 1.5rem;
+      background: linear-gradient(165deg, #281c44, #1a0d2b);
+      border: 2px solid rgba(255, 215, 0, 0.2);
+      box-shadow: 0 30px 40px -15px black;
+      text-align: center;
+      transition: 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+      backdrop-filter: blur(5px);
+      position: relative;
+    }
+    .podium-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 2px;
+      background: radial-gradient(circle at 70% 10%, #fff6b0, transparent 80%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+    .podium-rank-1 {
+      transform: scale(1.1);
+      border-color: #ffd966;
+      background: linear-gradient(145deg, #3b2560, #221438);
+      min-width: 180px;
+      box-shadow: 0 0 60px #ffae00;
+    }
+    .podium-rank-2 { border-color: #b0c4ff; }
+    .podium-rank-3 { border-color: #cdb38c; }
+    .podium-trophy {
+      font-size: 4.5rem;
+      line-height: 1;
+      filter: drop-shadow(0 8px 10px gold);
+      margin-bottom: 0.2rem;
+    }
+    .podium-rank-number {
+      display: none; /* hide numeric rank */
+      font-size: 2.4rem;
+      font-weight: 900;
+      color: #ffdb8e;
+      text-shadow: 0 0 15px #ffae00;
+    }
+    .podium-name {
+      font-weight: 700;
+      font-size: 1.35rem;
+      color: white;
+      margin: 0.4rem 0 0.2rem;
+    }
+    .podium-score {
+      font-size: 1.9rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffda88, #ffbe6e);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      display: inline-block;
+    }
+
+    /* leaderboard list */
+    .list-section {
+      background: rgba(20, 8, 36, 0.35);
+      backdrop-filter: blur(12px);
+      border-radius: 2.8rem;
+      padding: 2rem 1.8rem;
+      border: 1px solid rgba(230, 180, 255, 0.25);
+      box-shadow: 0 40px 60px -20px black;
+      margin-bottom: 2.5rem;
+    }
+    .list-header {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(145deg, #ffcfa2, #e4bcff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .list-container {
+      max-height: 460px;
+      overflow-y: auto;
+      padding-right: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .list-container::-webkit-scrollbar { width: 6px; }
+    .list-container::-webkit-scrollbar-track { background: #1e1233; border-radius: 20px; }
+    .list-container::-webkit-scrollbar-thumb { background: #a06eff; border-radius: 20px; }
+
+    .list-item {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      background: rgba(20, 8, 40, 0.7);
+      border-radius: 60px;
+      padding: 0.7rem 1rem 0.7rem 1.2rem;
+      border: 1px solid rgba(190, 130, 255, 0.3);
+      transition: 0.25s;
+      cursor: default;
+      backdrop-filter: blur(8px);
+    }
+    .list-item:hover {
+      background: rgba(55, 25, 100, 0.8);
+      border-color: #feb06a;
+      transform: scale(1.01) translateX(6px);
+      box-shadow: 0 20px 30px -18px #fed48c;
+    }
+
+    .list-rank {
+      display: none; /* ranks no longer shown */
+      font-size: 1.8rem;
+      font-weight: 800;
+      min-width: 60px;
+      text-align: center;
+      color: #ffda99;
+      text-shadow: 0 0 10px orange;
+      background: rgba(0,0,0,0.3);
+      padding: 0.3rem 0;
+      border-radius: 40px;
+    }
+
+    .list-avatar {
+      font-size: 2.2rem;
+      background: rgba(210, 160, 255, 0.25);
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      border: 2px solid #cba5ff;
+      box-shadow: 0 0 25px #bc8cff;
+    }
+
+    .list-info {
+      flex: 1;
+    }
+    .list-name {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.2px;
+      margin-bottom: 4px;
+    }
+    .list-score-label {
+      font-size: 0.85rem;
+      color: #beb0f0;
+    }
+
+    .list-score-value {
+      font-size: 1.7rem;
+      font-weight: 800;
+      background: linear-gradient(145deg, #ffe09c, #ffb1b1);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      min-width: 85px;
+      text-align: right;
+      padding-right: 10px;
+    }
+
+    /* ========== BOTTOM CONTROL BAR ========== */
+    .bottom-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1rem;
+      padding: 0.5rem;
+    }
+
+    .search-wrapper {
+      position: relative;
+      width: 280px;
+    }
+    .search-wrapper i {
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.3rem;
+      color: #b191ff;
+      filter: drop-shadow(0 0 6px #b191ff);
+    }
+    .search-box {
+      width: 100%;
+      padding: 1rem 1rem 1rem 3.2rem;
+      background: rgba(20, 8, 36, 0.9);
+      border: 2px solid rgba(170, 120, 255, 0.6);
+      border-radius: 60px;
+      font-size: 1.1rem;
+      color: #ffffff;
+      font-weight: 400;
+      transition: all 0.25s;
+      box-shadow: 0 10px 20px -8px #000;
+    }
+    .search-box:focus {
+      border-color: #ffb86b;
+      outline: none;
+      box-shadow: 0 0 30px #a06eff, 0 10px 25px black;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 1rem 2.2rem;
+      border-radius: 60px;
+      border: none;
+      font-weight: 700;
+      font-size: 1.1rem;
+      background: #2b174e;
+      color: #f0d0ff;
+      border: 2px solid #7b46c0;
+      cursor: pointer;
+      transition: 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 12px 18px -12px #000000cc;
+    }
+    .btn i { font-size: 1.3rem; }
+    .btn:hover {
+      background: #4d2a86;
+      color: white;
+      border-color: #f5b56c;
+      transform: translateY(-4px);
+      box-shadow: 0 22px 28px -14px #b469ff;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 3rem;
+      color: #a68fd6;
+      font-size: 1.2rem;
+      background: rgba(0,0,0,0.2);
+      border-radius: 60px;
+    }
+    .empty a {
+      color: #fec260;
+      font-weight: 600;
+      text-decoration: none;
+      border-bottom: 2px solid currentColor;
+    }
+
+    .timer-warning {
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    /* Fullscreen timer modal */
+    .timer-fullscreen-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 2, 15, 0.95);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .timer-fullscreen-overlay.active {
+      display: flex;
+    }
+
+    .timer-fullscreen-content {
+      text-align: center;
+      cursor: default;
+    }
+
+    .timer-fullscreen-label {
+      font-size: 3rem;
+      color: #b9b1e6;
+      margin-bottom: 1rem;
+      letter-spacing: 2px;
+    }
+
+    .timer-fullscreen-display {
+      font-size: 12vw;
+      font-weight: 900;
+      background: linear-gradient(135deg, #ffdb70, #ffb86b);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: 4px;
+      font-family: 'Courier New', monospace;
+      line-height: 1;
+      filter: drop-shadow(0 0 40px #ffb86b);
+    }
+
+    .timer-fullscreen-hint {
+      font-size: 1.5rem;
+      color: #7b6d9f;
+      margin-top: 2rem;
+      font-weight: 500;
+    }
+
+    @media (max-width: 700px) {
+      .stat-item { padding: 1.5rem 2rem; }
+      .stat-value { font-size: 3rem; }
+      .stat-item h3 { font-size: 1.2rem; }
+      .bottom-controls { flex-direction: column; gap: 1rem; width: 100%; }
+      .search-wrapper { width: 100%; }
+      .timer-display { font-size: 1.5rem; }
+    }
+    @media (max-width: 600px) {
+      .glass-panel { padding: 1.5rem; border-radius: 2rem; }
+      .podium-card { min-width: 120px; }
+      .podium-rank-1 { min-width: 140px; }
+      .header-row { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="glass-panel">
+    <div class="header-row">
+      <img src="Master Logo-transparent 1.png" alt="Master Logo" class="logo">
+      <h1>⚡ Synergia 2k26</h1>
+      
+      <!-- TIMER SECTION -->
+      <div class="timer-container" id="timerContainer">
+        <span class="timer-icon">⏳</span>
+        <div>
+          <div class="timer-label">HACKATHON ENDS IN</div>
+          <div class="timer-display" id="timer">24:00:00</div>
+        </div>
+        <div class="timer-controls">
+          <button class="timer-btn" id="startTimerBtn" title="Start">▶</button>
+          <button class="timer-btn" id="pauseTimerBtn" title="Pause">⏸️</button>
+          <button class="timer-btn" id="resetTimerBtn" title="Reset">↺</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="subtitle">
+      <span> LIVE · cumulative scores </span> 
+      <span> LEADERBOARD </span>
+      <span> Muthoot Institute of Technology and Science  </span>
+      <span> Department of Artificial Intelligence & Data Science </span>
+    </div>
+
+    <!-- STATS - BIG & CENTERED (teams & top score) -->
+    <div class="stats" id="stats"></div>
+
+    <div class="podium-section" id="podiumSection"></div>
+
+    <div class="list-section">
+      <div class="list-header">
+        <span>🏁 ALL TEAMS</span>
+       
+      </div>
+      <div class="list-container" id="board"></div>
+    </div>
+
+    <!-- EMPTY STATE (will be filled by JS) -->
+    <div class="empty" id="emptyState"></div>
+
+    <!-- CONTROLS MOVED TO BOTTOM (search, sort, admin) -->
+    <div class="bottom-controls">
+      <div class="search-wrapper">
+        <i>🔍</i>
+        <input type="text" id="search" class="search-box" placeholder="Search teams...">
+      </div>
+      <div class="btn-group">
+        <button class="btn" id="sortBtn"><i>⚡</i> sort by score</button>
+        <button class="btn" id="shuffleBtn"><i>🔀</i> shuffle</button>
+        <button class="btn" id="adminBtn"><i>⚙️</i> admin</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Timer Modal -->
+  <div class="timer-fullscreen-overlay" id="timerFullscreenOverlay">
+    <div class="timer-fullscreen-content">
+      <div class="timer-fullscreen-label">HACKATHON ENDS IN</div>
+      <div class="timer-fullscreen-display" id="timerFullscreenDisplay">24:00:00</div>
+      <div class="timer-fullscreen-hint">click to exit</div>
+    </div>
+  </div>
+
+  <!-- Alert Sound -->
+  <audio id="alertSound" preload="auto">
+    <source src="alert.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    (function() {
+      let sortAscending = false;
+      let isShuffled = false;
+      let filteredTeams = [];
+      let allTeams = [];
+      let podiumRevealed = false;
+      let timerEndAlertPlayed = false;
+
+      // ========== TIMER FUNCTIONALITY (Synced with Admin) ==========
+      const timerDisplay = document.getElementById('timer');
+      const startBtn = document.getElementById('startTimerBtn');
+      const pauseBtn = document.getElementById('pauseTimerBtn');
+      const resetBtn = document.getElementById('resetTimerBtn');
+      const timerContainer = document.getElementById('timerContainer');
+
+      let timerUpdateInterval = null;
+      let currentTimerSeconds = 24 * 60 * 60;
+      let isTimerRunning = false;
+
+      // Load and sync timer state from admin localStorage
+      function syncTimerFromAdmin() {
+        const saved = localStorage.getItem('hackathonTimer');
+        if (saved) {
+          try {
+            const state = JSON.parse(saved);
+            isTimerRunning = state.isRunning;
+            
+            // Calculate remaining time accounting for elapsed time
+            let remainingSeconds = state.seconds;
+            if (state.isRunning && state.startTime) {
+              const elapsedMs = Date.now() - state.startTime;
+              const elapsedSeconds = Math.floor(elapsedMs / 1000);
+              remainingSeconds = Math.max(0, state.seconds - elapsedSeconds);
+            }
+            
+            currentTimerSeconds = remainingSeconds;
+            updateTimerDisplay(currentTimerSeconds);
+          } catch (e) {
+            console.error('Error parsing timer state:', e);
+          }
+        }
+      }
+
+      function formatTime(seconds) {
+        if (seconds < 0) seconds = 0;
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      }
+
+      function updateTimerDisplay(seconds) {
+        const formattedTime = formatTime(seconds);
+        timerDisplay.textContent = formattedTime;
+        document.getElementById('timerFullscreenDisplay').textContent = formattedTime;
+        
+        // Play alert when timer reaches 0
+        if (seconds === 0 && !timerEndAlertPlayed) {
+          timerEndAlertPlayed = true;
+          playTimerAlert();
+        }
+        
+        // Reset alert flag when timer is not running or greater than 0
+        if (seconds > 0) {
+          timerEndAlertPlayed = false;
+        }
+        
+        // Visual warning when less than 1 hour remains
+        if (seconds < 3600) {
+          timerContainer.classList.add('timer-warning');
+        } else {
+          timerContainer.classList.remove('timer-warning');
+        }
+      }
+
+      function playTimerAlert() {
+        const alertSound = document.getElementById('alertSound');
+        if (alertSound) {
+          alertSound.currentTime = 0;
+          alertSound.play().catch(err => console.log('Audio playback failed:', err));
+        }
+      }
+
+      // Run the countdown on the leaderboard
+      function runTimerCountdown() {
+        if (timerUpdateInterval) {
+          clearInterval(timerUpdateInterval);
+        }
+        
+        if (!isTimerRunning) {
+          return;
+        }
+        
+        timerUpdateInterval = setInterval(() => {
+          syncTimerFromAdmin();
+          if (!isTimerRunning) {
+            clearInterval(timerUpdateInterval);
+          }
+        }, 100); // Update every 100ms for smooth countdown
+      }
+
+      // Timer control buttons redirect to admin panel
+      startBtn.addEventListener('click', () => {
+        window.location.href = 'admin.html#timer';
+      });
+      pauseBtn.addEventListener('click', () => {
+        window.location.href = 'admin.html#timer';
+      });
+      resetBtn.addEventListener('click', () => {
+        window.location.href = 'admin.html#timer';
+      });
+
+      // Fullscreen timer functionality
+      const timerFullscreenOverlay = document.getElementById('timerFullscreenOverlay');
+
+      timerDisplay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        timerFullscreenOverlay.classList.add('active');
+      });
+
+      timerFullscreenOverlay.addEventListener('click', () => {
+        timerFullscreenOverlay.classList.remove('active');
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && timerFullscreenOverlay.classList.contains('active')) {
+          timerFullscreenOverlay.classList.remove('active');
+        }
+      });
+
+      // Sync timer from admin on page load
+      syncTimerFromAdmin();
+      runTimerCountdown();
+      
+      // Continuously poll admin timer every 2 seconds to detect state changes
+      setInterval(() => {
+        syncTimerFromAdmin();
+        runTimerCountdown();
+      }, 2000);
+
+      // ========== PODIUM REVEAL SYNC ==========
+      function syncPodiumRevealState() {
+        const saved = localStorage.getItem('podiumRevealed');
+        if (saved !== null) {
+          podiumRevealed = JSON.parse(saved);
+          renderLeaderboard();
+        }
+      }
+
+      // Load initial state
+      syncPodiumRevealState();
+
+      // Listen for storage changes from admin
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'podiumRevealed') {
+          syncPodiumRevealState();
+        }
+      });
+
+      // Poll for podium state changes every 1 second
+      setInterval(() => {
+        syncPodiumRevealState();
+      }, 1000);
+
+      // ========== LEADERBOARD FUNCTIONS ==========
+      function loadTeams() {
+        const stored = localStorage.getItem("hackTeams");
+        if (stored) {
+          return JSON.parse(stored);
+        } else {
+          const defaultTeams = [
+            { name: '404 not found', total: 3420 },
+            { name: 'Syntax Sorcerers', total: 2890 },
+            { name: 'Byte Brigade', total: 2750 },
+            { name: 'CSS Crusaders', total: 2100 },
+            { name: 'Async Await', total: 1850 },
+            { name: 'Promise Pilots', total: 1620 },
+            { name: 'React Rangers', total: 1330 },
+            { name: 'Git Gurus', total: 1150 },
+            { name: 'Api Wizards', total: 980 },
+            { name: 'Debug Divas', total: 720 },
+            { name: 'Vue Vipers', total: 540 },
+            { name: 'Docker Dudes', total: 300 },
+          ];
+          localStorage.setItem("hackTeams", JSON.stringify(defaultTeams));
+          return defaultTeams;
+        }
+      }
+
+      // render STATS big & beautiful
+      function renderStats(teams) {
+        const statsDiv = document.getElementById('stats');
+        if (!teams.length) {
+          statsDiv.innerHTML = '';
+          return;
+        }
+        const maxScore = Math.max(...teams.map(t => t.total || 0));
+        statsDiv.innerHTML = `
+          <div class="stat-item">
+            <h3>🏆 TEAMS</h3>
+            <div class="stat-value">${teams.length}</div>
+          </div>
+          <div class="stat-item">
+            <h3>🔥 TOP SCORE</h3>
+            <div class="stat-value">${maxScore}</div>
+          </div>
+        `;
+      }
+
+      function renderPodium(top3) {
+        const podiumDiv = document.getElementById('podiumSection');
+        if (top3.length === 0) {
+          podiumDiv.innerHTML = '';
+          return;
+        }
+        const trophies = ['👑', '🥈', '🥉'];
+        let html = '<div class="podium-container">';
+        const order = [1, 0, 2]; // silver, gold, bronze left to right
+
+        order.forEach(idx => {
+          if (top3[idx]) {
+            const team = top3[idx];
+            const actualRank = idx + 1; // still available if needed
+            const podiumClass = `podium-rank-${actualRank}`;
+            const trophyIcon = idx === 0 ? '🏆' : trophies[idx];
+            
+            // Show question mark if podium not revealed, otherwise show team details
+            const teamName = podiumRevealed ? team.name : '?';
+            const teamScore = podiumRevealed ? `${team.total} pts` : '';
+            
+            html += `
+              <div class="podium-card ${podiumClass}">
+                <div class="podium-trophy">${trophyIcon}</div>
+                <!-- rank number removed -->
+                <div class="podium-name">${teamName}</div>
+                <div class="podium-score">${teamScore}</div>
+              </div>
+            `;
+          }
+        });
+        html += '</div>';
+        podiumDiv.innerHTML = html;
+      }
+
+      function renderLeaderboard(teamsToRender = null) {
+        const teams = teamsToRender || loadTeams();
+        allTeams = teams.slice();
+        filteredTeams = teams.slice();
+
+        // Apply shuffle or sort
+        if (isShuffled) {
+          // Fisher-Yates shuffle
+          for (let i = filteredTeams.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [filteredTeams[i], filteredTeams[j]] = [filteredTeams[j], filteredTeams[i]];
+          }
+        } else {
+          filteredTeams.sort((a, b) => sortAscending ? a.total - b.total : b.total - a.total);
+        }
+
+        const container = document.getElementById('board');
+        const emptyDiv = document.getElementById('emptyState');
+        container.innerHTML = '';
+        emptyDiv.innerHTML = '';
+
+        renderStats(filteredTeams);
+
+        if (filteredTeams.length === 0) {
+          emptyDiv.innerHTML = '<div class="empty">✨ No teams yet.<br><br> <a href="admin.html">➕ Add teams via admin</a></div>';
+          renderPodium([]);
+          return;
+        }
+
+        renderPodium(filteredTeams.slice(0, 3));
+
+        filteredTeams.forEach((team, index) => {
+          // rank calculation logic preserved if needed but not displayed
+          // let rank = index + 1;
+          // if (index > 0 && filteredTeams[index - 1].total === team.total) {
+          //   const prevRanks = document.querySelectorAll('.list-rank');
+          //   if (prevRanks.length) {
+          //     rank = parseInt(prevRanks[prevRanks.length - 1].textContent);
+          //   }
+          // }
+
+          const avatars = ['🔥', '💎', '🧠', '⚡', '🌟', '🌀', '🎮', '🛸'];
+          const avatar = avatars[index % avatars.length];
+
+          const showScore = false; // all scores hidden
+          const scoreDisplay = '';
+          const scoreLabel = '✨ hidden ✨';
+
+          const item = document.createElement('div');
+          item.className = 'list-item';
+          item.innerHTML = `
+            <!-- rank hidden -->
+            <div class="list-avatar">${avatar}</div>
+            <div class="list-info">
+              <div class="list-name">${team.name}</div>
+              <div class="list-score-label">${scoreLabel}</div>
+            </div>
+            <div class="list-score-value">${scoreDisplay}</div>
+          `;
+          container.appendChild(item);
+        });
+      }
+
+      // Search
+      document.getElementById('search').addEventListener('input', (e) => {
+        const query = e.target.value.trim().toLowerCase();
+        filteredTeams = allTeams.filter(t => t.name.toLowerCase().includes(query));
+        
+        // Apply shuffle or sort
+        if (isShuffled) {
+          for (let i = filteredTeams.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [filteredTeams[i], filteredTeams[j]] = [filteredTeams[j], filteredTeams[i]];
+          }
+        } else {
+          filteredTeams.sort((a, b) => sortAscending ? a.total - b.total : b.total - a.total);
+        }
+        
+        renderLeaderboard(filteredTeams);
+      });
+
+      // Sort toggle
+      document.getElementById('sortBtn').addEventListener('click', () => {
+        isShuffled = false;
+        sortAscending = !sortAscending;
+        const btn = document.getElementById('sortBtn');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        btn.innerHTML = sortAscending ? '<i>⚡</i> sorted ↑' : '<i>⚡</i> sorted ↓';
+        shuffleBtn.innerHTML = '<i>🔀</i> shuffle';
+        renderLeaderboard();
+      });
+
+      // Shuffle button
+      document.getElementById('shuffleBtn').addEventListener('click', () => {
+        isShuffled = !isShuffled;
+        const btn = document.getElementById('shuffleBtn');
+        const sortBtn = document.getElementById('sortBtn');
+        btn.innerHTML = isShuffled ? '<i>🔀</i> shuffled 🎲' : '<i>🔀</i> shuffle';
+        if (isShuffled) {
+          sortBtn.innerHTML = '<i>⚡</i> sort by score';
+          sortAscending = false;
+        }
+        renderLeaderboard();
+      });
+
+      // Admin nav
+      document.getElementById('adminBtn').addEventListener('click', () => {
+        window.location.href = 'admin.html';
+      });
+
+      // initial render + polling
+      renderLeaderboard();
+      setInterval(() => {
+        const fresh = loadTeams();
+        renderLeaderboard(fresh);
+      }, 2700);
+
+      // Clean up timer on page unload
+      window.addEventListener('beforeunload', () => {
+        if (timerUpdateInterval) {
+          clearInterval(timerUpdateInterval);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
